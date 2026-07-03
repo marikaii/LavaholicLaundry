@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Quicksand", sans-serif;
+  
+  --color-primary: #005f6d;
+  --color-primary-container: rgba(0, 95, 109, 0.08);
+  --color-on-primary-container: #005f6d;
+  --color-secondary: #007a8b;
+  --color-secondary-container: rgba(0, 122, 139, 0.06);
+  --color-on-secondary-container: #007a8b;
+  
+  --color-background: #f8fafc;
+  --color-on-background: #0f172a;
+  
+  --color-surface: #ffffff;
+  --color-on-surface: #1e293b;
+  --color-on-surface-variant: #64748b;
+  
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f1f5f9;
+  --color-surface-container: #f8fafc;
+  --color-surface-container-high: #e2e8f0;
+  --color-surface-container-highest: #cbd5e1;
+  --color-surface-bright: #ffffff;
+  
+  --color-outline: #cbd5e1;
+  --color-outline-variant: #e2e8f0;
+  --color-error: #ef4444;
+  
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #f8fafc;
+  color: var(--color-on-background);
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6, .font-quicksand {
+  font-family: var(--font-headline);
+}
+
+/* Glassmorphism utility removed for white layout, using clean borders and soft shadows instead */
+.bg-surface-container-lowest,
+.bg-surface-bright,
+.bg-secondary-container,
+.bg-surface-container-high,
+.bg-surface-container-low {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Micro-animations and custom effects */
+.progress-ring__circle {
+  transition: stroke-dashoffset 0.35s;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.switch-track {
+  transition: background-color 0.2s ease;
+}
+
+.switch-thumb {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+

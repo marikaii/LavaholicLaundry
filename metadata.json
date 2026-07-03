@@ -1,0 +1,6 @@
+{
+  "name": "Lavaholic",
+  "description": "A premium laundry tracking application featuring real-time state synchronization, stepper animations, and an interactive staff dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
