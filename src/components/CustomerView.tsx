@@ -39,9 +39,6 @@ export default function CustomerView({
   const [calcAddOns, setCalcAddOns] = useState<string[]>([]);
   const [chatInput, setChatInput] = useState('');
 
-  // 🕒 Local state to track seconds inside the active minute
-  const [secondsLeft, setSecondsLeft] = useState(0);
-
   // 🔒 STRICT SECURITY FILTER: Only allow orders explicitly belonging to this logged-in customer
   const myOrders = orders.filter(
     (o) => o.customerName.trim().toLowerCase() === (customerName || '').trim().toLowerCase()
@@ -55,31 +52,54 @@ export default function CustomerView({
     (msg) => msg.threadId === threadId || msg.threadId === 'System' || msg.threadId === 'General'
   );
 
-  // Sync / Reset seconds when master baseline duration adjustments occur from Staff side
+  // 🔔 Request Standard Web Browser Notification permissions on layout mount
   useEffect(() => {
-    setSecondsLeft(0);
-  }, [activeOrder?.status, activeOrder?.duration]);
-
-  // Smooth local ticking mechanism for seconds countdown display
-  useEffect(() => {
-    const isCycleRunning = 
-      activeOrder?.status === 'Washing' || 
-      activeOrder?.status === 'Drying' || 
-      activeOrder?.status === 'Folding';
-
-    if (!isCycleRunning || !activeOrder || activeOrder.duration <= 0) {
-      return;
+    if ("notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
     }
+  }, []);
 
-    const interval = setInterval(() => {
-      setSecondsLeft((prevSeconds) => {
-        if (prevSeconds <= 0) return 59;
-        return prevSeconds - 1;
-      });
-    }, 1000);
+  // 🔔 Live Browser Notification alert mechanism with audio chime feedback
+  useEffect(() => {
+    myOrders.forEach((order) => {
+      if (order.status === 'Ready') {
+        const flagKey = `lavaholic_browser_notified_${order.id}`;
+        
+        if (!localStorage.getItem(flagKey)) {
+          localStorage.setItem(flagKey, 'true');
 
-    return () => clearInterval(interval);
-  }, [activeOrder?.status, activeOrder?.duration]);
+          // 1. Play audible tone
+          try {
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 musical note
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+          } catch (soundError) {
+            console.log("Audio play blocked by browser interaction policy.");
+          }
+
+          // 2. Dispatch browser tab prompt banner
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification('🧺 Laundry Ready for Pickup!', {
+              body: `Hi ${order.customerName}, your laundry load under order #${order.id} is neatly folded and fresh!`,
+              icon: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA_0sGCwvxLJEVdBYx3bb1K_Yz0m4jcdWfLcm_pT_qVd0ZEsDVExOmMCah57Wfc4iQAzOS6P47C2paGkvV_s84y5czTqEYEDanX9F4ydusfapMtwJjNiaKiS6DD1E2MXBM21sg6bz-Uf9xGCfW-aeudk_ZOSO7TYlrUxwhUa-n2GOVO48_zP-Bc8LCAZ7O-pUWGSxffDn0EXE54XKyIweSuKTshdi8E9xgqcxj9mBIxX7RXebV_caUR75WC0LLCnRqcckw'
+            });
+          } else {
+            alert(`🧺 Order #${order.id} is Ready for Pickup!`);
+          }
+        }
+      }
+    });
+  }, [orders]);
 
   // Sync local activeOrder with latest state from personal orders list, or default safely
   useEffect(() => {
@@ -133,7 +153,7 @@ export default function CustomerView({
         if (!hasLiveAgentReplied) {
           let reply = "Hello! A live support attendant has been notified of your message and will reply here shortly.";
           if (activeOrder) {
-            reply = `Got your message! I've flagged our laundry team about your order #${activeOrder.id} (Status: ${activeOrder.status}, ${activeOrder.duration} min left). We are on it! Feel free to leave this chat open or switch views; your messages will sync live.`;
+            reply = `Got your message! I've flagged our laundry team about your order #${activeOrder.id} (Status: ${activeOrder.status}). We are on it! Feel free to leave this chat open or switch views; your messages will sync live.`;
           }
           onSendChatMessage(threadId, 'staff', 'Laundry Support', reply);
         }
@@ -150,27 +170,6 @@ export default function CustomerView({
   };
 
   const currentStepIndex = activeOrder ? getStatusStepIndex(activeOrder.status) : 0;
-
-  // Helper utility to generate the formatted MM:SS string safely
-  const formatClockDisplay = () => {
-    if (!activeOrder) return '00:00';
-    if (activeOrder.status === 'Sorting' || activeOrder.status === 'Ready') {
-      return `${activeOrder.duration.toString().padStart(2, '0')}:00`;
-    }
-    const displayedMinutes = secondsLeft > 0 ? activeOrder.duration - 1 : activeOrder.duration;
-    const mm = Math.max(0, displayedMinutes).toString().padStart(2, '0');
-    const ss = secondsLeft.toString().padStart(2, '0');
-    return `${mm}:${ss}`;
-  };
-
-  // Circular progress math
-  const radius = 80;
-  const circumference = radius * 2 * Math.PI;
-  // Calculate percentage based on duration / totalDuration
-  const percentComplete = activeOrder 
-    ? Math.min(100, Math.max(0, ((activeOrder.totalDuration - activeOrder.duration) / activeOrder.totalDuration) * 100))
-    : 75; // Default mockup percentage
-  const strokeDashoffset = circumference - (percentComplete / 100) * circumference;
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col pb-24 relative">
@@ -250,7 +249,7 @@ export default function CustomerView({
             </p>
           )}
 
-          {/* Suggested / Live Active Orders Helper - 🔒 FIXED: Now loops strictly over myOrders */}
+          {/* Suggested / Live Active Orders Helper - Loops strictly over user's filtered orders */}
           {myOrders.length > 0 && (
             <div className="mt-3.5">
               <span className="text-[10px] uppercase font-bold text-outline tracking-wider block mb-1.5 px-1">Active hub orders (click to track):</span>
@@ -339,56 +338,20 @@ export default function CustomerView({
                 })}
               </div>
 
-              {/* Current Cycle Progress Indicator Circle */}
-              <div className="flex flex-col items-center justify-center py-6 bg-secondary-container/15 rounded-2xl relative overflow-hidden shadow-inner">
-                <svg className="w-48 h-48 drop-shadow-sm">
-                  {/* Track ring */}
-                  <circle 
-                    className="text-outline-variant/20" 
-                    cx="96" 
-                    cy="96" 
-                    fill="transparent" 
-                    r={radius} 
-                    stroke="currentColor" 
-                    strokeWidth="8"
-                  />
-                  {/* Progress ring */}
-                  <circle 
-                    className="progress-ring__circle text-primary" 
-                    cx="96" 
-                    cy="96" 
-                    fill="transparent" 
-                    r={radius} 
-                    stroke="currentColor" 
-                    strokeDasharray={circumference} 
-                    strokeDashoffset={strokeDashoffset} 
-                    strokeLinecap="round" 
-                    strokeWidth="10"
-                  />
-                </svg>
-                
-                {/* Text centered inside circular ring */}
-                <div className="absolute flex flex-col items-center text-center">
-                  <span className="font-headline text-4xl font-bold text-primary tracking-tight font-mono">
-                    {formatClockDisplay()}
-                  </span>
-                  <span className="font-sans text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mt-0.5">
-                    Time Left
-                  </span>
+              {/* Minimalist Estimated Time Container (Clean & Elegant Replacement for Countdown) */}
+              <div className="py-8 bg-secondary-container/15 rounded-2xl border border-dashed border-primary/20 text-center space-y-2 shadow-inner">
+                <span className="font-sans text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block">
+                  Estimated Completion Time
+                </span>
+                <div className="font-headline text-3xl font-black text-primary tracking-tight">
+                  {activeOrder.status === 'Ready' ? 'Ready for Pickup' : activeOrder.estimatedTime}
                 </div>
-
-                {/* Status text labels under circular ring */}
-                <div className="mt-5 text-center px-4">
-                  <p className="font-headline text-sm font-bold text-on-surface-variant uppercase tracking-widest flex items-center justify-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                    </span>
-                    <span>{activeOrder.status} in Progress</span>
-                  </p>
-                  <p className="text-xs text-outline font-semibold mt-1">
-                    ETC: {activeOrder.estimatedTime}
-                  </p>
+                <div className="inline-flex items-center justify-center gap-1.5 text-xs text-outline font-semibold">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                  <span className="capitalize">{activeOrder.status} in Progress</span>
                 </div>
               </div>
             </section>
@@ -483,7 +446,6 @@ export default function CustomerView({
                             ? currentAddons.filter(a => a !== addon)
                             : [...currentAddons, addon];
                           
-                          // Recalculate price
                           const newPriceDetails = calculateOrderPrice(activeOrder.serviceType, activeOrder.weight, updatedAddons);
                           onUpdateOrder(activeOrder.id, {
                             addOns: updatedAddons,
@@ -567,7 +529,7 @@ export default function CustomerView({
               </div>
             </section>
 
-            {/* Your Order History Section - 🔒 FIXED: Now loops strictly over myOrders */}
+            {/* Your Private Order History Section */}
             <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-outline-variant/30 text-left space-y-3">
               <h3 className="font-headline text-sm font-bold text-primary flex items-center gap-1.5 border-b border-outline-variant/20 pb-2">
                 <span className="material-symbols-outlined text-base">history</span>
@@ -892,7 +854,7 @@ export default function CustomerView({
                   <h3 className="font-headline font-bold text-sm text-white">Lavaholic Support Agent</h3>
                   <p className="text-[9px] text-white/80 font-medium flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full inline-block animate-pulse"></span>
-                    <span>Online • Response time &lt; 1m</span>
+                    <span>Online • Response time < 1m</span>
                   </p>
                 </div>
               </div>
