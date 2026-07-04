@@ -291,14 +291,23 @@ export default function App() {
     setRole('welcome');
   };
 
-  const handleSwitchToCustomer = () => {
+  const handleSwitchToCustomer = (targetCustomerName?: string) => {
+    if (targetCustomerName) {
+      setCustomerName(targetCustomerName);
+    }
     setRole('customer');
   };
 
   // Render correct screen depending on current state/role
   if (role === 'welcome') {
+    // Create an array of unique customer names from active orders for validation
+    const existingCustomerNames = Array.from(
+      new Set(orders.map((o) => o.customerName.trim().toLowerCase()))
+    );
+
     return (
       <WelcomeView
+        existingCustomers={existingCustomerNames}
         onSelectRole={(selectedRole, name) => {
           if (selectedRole === 'customer') {
             setCustomerName(name);
