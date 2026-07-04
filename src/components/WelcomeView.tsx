@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 import { User, ShieldAlert, Eye, EyeOff, Sparkles, LogIn } from 'lucide-react';
 
 interface WelcomeViewProps {
+  existingCustomers: string[]; // Accepts validation list from App.tsx
   onSelectRole: (role: 'customer', name: string) => void;
   onAdminLogin: () => void;
 }
 
-export default function WelcomeView({ onSelectRole, onAdminLogin }: WelcomeViewProps) {
+export default function WelcomeView({ existingCustomers, onSelectRole, onAdminLogin }: WelcomeViewProps) {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerInputName, setCustomerInputName] = useState('');
   const [passcode, setPasscode] = useState('');
   const [showPasscode, setShowPasscode] = useState(false);
   const [error, setError] = useState('');
+  const [customerError, setCustomerError] = useState(''); // Separate error state for customer input
 
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,9 +30,20 @@ export default function WelcomeView({ onSelectRole, onAdminLogin }: WelcomeViewP
 
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (customerInputName.trim()) {
+    setCustomerError('');
+    
+    const formattedName = customerInputName.trim();
+    
+    if (formattedName) {
+      // Validate if the lowercased name matches an active tracking order profile
+      if (!existingCustomers.includes(formattedName.toLowerCase())) {
+        setCustomerError('Access Denied: No active order found under this name.');
+        return;
+      }
+      
+      setCustomerError('');
       setShowCustomerModal(false);
-      onSelectRole('customer', customerInputName.trim());
+      onSelectRole('customer', formattedName);
     }
   };
 
@@ -98,6 +111,7 @@ export default function WelcomeView({ onSelectRole, onAdminLogin }: WelcomeViewP
           <button
             onClick={() => {
               setCustomerInputName('');
+              setCustomerError('');
               setShowCustomerModal(true);
             }}
             className="w-full bg-white hover:bg-white/95 text-[#0a7c92] py-4 rounded-2xl font-sans font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-lg shadow-black/10 cursor-pointer"
@@ -227,13 +241,21 @@ export default function WelcomeView({ onSelectRole, onAdminLogin }: WelcomeViewP
                 <input
                   type="text"
                   value={customerInputName}
-                  onChange={(e) => setCustomerInputName(e.target.value)}
+                  onChange={(e) => {
+                    setCustomerInputName(e.target.value);
+                    setCustomerError('');
+                  }}
                   placeholder="e.g., Alex Carter"
                   required
                   className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 font-sans text-sm text-white placeholder-white/40 focus:border-white focus:outline-none focus:ring-1 focus:ring-white transition-all shadow-inner"
                   id="customer-name-input"
                   autoFocus
                 />
+                {customerError && (
+                  <div className="text-[11px] text-red-200 bg-red-950/20 border border-red-500/20 px-3 py-2 rounded-xl font-semibold mt-2" id="customer-name-error">
+                    {customerError}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
