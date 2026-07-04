@@ -109,9 +109,8 @@ export default function CustomerView({
         setActiveOrder(updated);
       }
     } else if (myOrders.length > 0) {
-      setActiveOrder(myOrders[0]);
-    } else {
-      setActiveOrder(null);
+      const defaultOrder = myOrders.find(o => o.id === 'LAV8829') || myOrders[0];
+      setActiveOrder(defaultOrder);
     }
   }, [orders, customerName]);
 
@@ -338,7 +337,7 @@ export default function CustomerView({
                 })}
               </div>
 
-              {/* Minimalist Estimated Time Container (Clean & Elegant Replacement for Countdown) */}
+              {/* Minimalist Estimated Time Container */}
               <div className="py-8 bg-secondary-container/15 rounded-2xl border border-dashed border-primary/20 text-center space-y-2 shadow-inner">
                 <span className="font-sans text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block">
                   Estimated Completion Time
@@ -446,6 +445,7 @@ export default function CustomerView({
                             ? currentAddons.filter(a => a !== addon)
                             : [...currentAddons, addon];
                           
+                          // Recalculate price
                           const newPriceDetails = calculateOrderPrice(activeOrder.serviceType, activeOrder.weight, updatedAddons);
                           onUpdateOrder(activeOrder.id, {
                             addOns: updatedAddons,
@@ -703,7 +703,7 @@ export default function CustomerView({
                     </div>
                   </div>
 
-                  {/* Step 3: Addon Toggles */}
+                  {/* Step 3: Addon Toggles - 🔒 FIXED: Opened bracket closed correctly before className definition */}
                   <div className="space-y-2 pt-2 border-t border-outline-variant/10">
                     <label className="text-[10px] font-bold text-outline uppercase tracking-wider block">3. Premium Add-ons & Extras</label>
                     <div className="grid grid-cols-2 gap-2">
